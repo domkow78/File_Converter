@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from Backend import setup_pendrive_directories, modify_file
+from Backend import setup_pendrive_directories, check_required_files, modify_file
 
 st.set_page_config(page_title="File Converter", layout="wide")
 
@@ -29,23 +29,23 @@ except RuntimeError as e:
     st.error(str(e))
     st.stop()  # Zatrzymuje dalsze wykonywanie aplikacji
 
-# Wyświetlenie katalogów
-st.markdown(f"### Source Directory: {source_dir}")
-st.markdown(f"### Target Directory: {target_dir}")
+# Sprawdzanie wymaganych plików
+zip_file_name, bsh_file_name = check_required_files(source_dir)
 
-# Przycisk do konwersji
-if st.button("Convert"):
-    files = [f for f in os.listdir(source_dir) if os.path.isfile(os.path.join(source_dir, f))]
-    if not files:
-        st.warning("No files found in the source directory.")
-    else:
-        for file in files:
-            source_file = os.path.join(source_dir, file)
-            target_file = os.path.join(target_dir, file)
+if zip_file_name and bsh_file_name:
+    st.success("Both required files are present:")
+    st.markdown(f"- ZIP file: `{zip_file_name}`")
+    st.markdown(f"- BSH file: `{bsh_file_name}`")
 
-            # Wywołanie funkcji modyfikującej plik
-            success, message = modify_file(source_file, target_file)
-            if success:
-                st.success(message)
-            else:
-                st.error(message)
+    # Przycisk do konwersji
+    if st.button("Convert"):
+        st.info("Conversion process started...")
+        # Wywołanie funkcji modify_file
+        modify_file(zip_file_name, bsh_file_name)
+        st.success("Conversion completed!")
+elif not zip_file_name and not bsh_file_name:
+    st.error("Both required files are missing: `.zip` file and `bsh-lc_domain`.")
+elif not zip_file_name:
+    st.error("Missing file: `.zip` file.")
+elif not bsh_file_name:
+    st.error("Missing file: `bsh-lc_domain`.")

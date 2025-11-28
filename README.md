@@ -1,16 +1,16 @@
 # File Converter
 
-This App convert two special file according to recip
-App creates two catalogs, Source and Target
-Put your files to Source, press the button Convert
-Script convert it and save in Target catalog
+This App convert two special file according to recip.
+App creates two catalogs, Source and Target.
+Put your files to Source, press the button Convert.
+Script convert it and save in Target catalog.
 
 ## How to install in system
 
 Go to desire catalog and clone repositiory, it will come with File_Converter directory.
-Create and activate venv inside directory
-Install dependencies
-Run the App
+Create and activate venv inside directory.
+Install dependencies.
+Run the App.
 
 ### Create venv:
 

@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 import psutil
-import sys  # Dodano do obsługi zakończenia programu
+import sys
 
 def get_pendrive_path():
     """
@@ -36,29 +36,30 @@ def setup_pendrive_directories():
     else:
         raise RuntimeError("No pendrive detected. Please insert a pendrive.")
 
+def check_required_files(source_dir):
+    """
+    Sprawdza, czy w katalogu Source znajdują się dwa wymagane pliki:
+    - Plik z rozszerzeniem .zip.
+    - Plik o nazwie 'bsh-lc_domain'.
+    Zwraca informacje o brakujących plikach oraz ich nazwy.
+    """
+    zip_file_name = None
+    bsh_file_name = None
+
+    for file in os.listdir(source_dir):
+        if file.endswith(".zip"):  # Sprawdza, czy plik ma rozszerzenie .zip
+            zip_file_name = file
+        elif file == "bsh-lc_domain":  # Sprawdza, czy plik ma nazwę 'bsh-lc_domain'
+            bsh_file_name = file
+
+    return zip_file_name, bsh_file_name
+
 def modify_file(source_file, target_file):
     """
-    Modyfikuje plik tekstowy, dodając datę systemową na początku pliku,
-    i zapisuje zmodyfikowany plik w katalogu docelowym.
+    Tymczasowo pusta funkcja. Instrukcje zostaną dodane później.
     """
-    try:
-        print(f"Reading from: {source_file}")
-        with open(source_file, 'r', encoding='utf-8') as src:
-            content = src.read()
-
-        # Dodanie daty systemowej na początku pliku
-        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        modified_content = f"Modified on: {current_date}\n\n{content}\n"
-
-        print(f"Appending to: {target_file}")
-        # Dopisywanie zmodyfikowanego pliku w katalogu docelowym
-        with open(target_file, 'a', encoding='utf-8') as tgt:
-            tgt.write(modified_content)
-
-        return True, f"File '{os.path.basename(source_file)}' modified successfully."
-    except Exception as e:
-        print(f"Error: {e}")
-        return False, f"Error modifying file '{os.path.basename(source_file)}': {e}"
+    print(f"Modify file called with: {source_file}, {target_file}")
+    pass
 
 if __name__ == "__main__":
     try:
