@@ -2,15 +2,37 @@ import os
 from datetime import datetime
 import psutil
 import sys
+import streamlit as st
 
 def get_pendrive_path():
     """
     Wykrywa pierwszy dostępny dysk wymienny (pendrive) w systemie.
+    Obsługuje systemy Windows i Linux (Ubuntu).
     Zwraca ścieżkę do pendrive'a lub None, jeśli nie znaleziono.
     """
-    for partition in psutil.disk_partitions():
-        if 'removable' in partition.opts:  # Sprawdza, czy dysk jest wymienny
-            return partition.mountpoint  # Zwraca punkt montowania (np. "D:\\")
+    # Rozpoznanie systemu operacyjnego
+    if os.name == 'nt':  # 'nt' oznacza Windows
+        # Logika dla systemu Windows
+        for partition in psutil.disk_partitions():
+            print(f"Checking partition: {partition.device}, opts: {partition.opts}")  # Log diagnostyczny
+            if 'removable' in partition.opts:  # Sprawdza, czy dysk jest wymienny
+                return partition.mountpoint  # Zwraca punkt montowania (np. "D:\\")
+    
+    elif os.name == 'posix':  # 'posix' oznacza systemy uniksowe (Linux, macOS)
+        # Logika dla systemu Linux
+        media_dirs = ["/media", "/run/media"]
+        for media_dir in media_dirs:
+            if os.path.exists(media_dir):
+                for user_dir in os.listdir(media_dir):
+                    user_path = os.path.join(media_dir, user_dir)
+                    if os.path.isdir(user_path):  # Sprawdza, czy to katalog
+                        for device in os.listdir(user_path):
+                            device_path = os.path.join(user_path, device)
+                            if os.path.ismount(device_path):  # Sprawdza, czy to punkt montowania
+                                print(f"Detected pendrive at: {device_path}")  # Log diagnostyczny
+                                return device_path
+
+    # Jeśli nie znaleziono pendrive'a
     return None
 
 def setup_pendrive_directories():
@@ -37,6 +59,10 @@ def setup_pendrive_directories():
         raise RuntimeError("No pendrive detected. Please insert a pendrive.")
 
 def check_required_files(source_dir):
+    if not os.path.exists(source_dir):
+        print(f"Source directory does not exist: {source_dir}")
+        return None, None
+
     """
     Sprawdza, czy w katalogu Source znajdują się dwa wymagane pliki:
     - Plik z rozszerzeniem .zip.
@@ -64,6 +90,8 @@ def modify_file(source_file, target_file):
 if __name__ == "__main__":
     try:
         source_dir, target_dir = setup_pendrive_directories()
+        st.success(f"Pendrive detected. Source directory: {source_dir}, Target directory: {target_dir}")
+        print(f"Source directory: {source_dir}, Target directory: {target_dir}")  # Log diagnostyczny
     except RuntimeError as e:
-        print(e)
-        sys.exit(1)  # Zakończenie działania programu z kodem błędu
+        st.error(str(e))
+        st.stop()
