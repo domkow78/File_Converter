@@ -35,6 +35,14 @@ Inside venv run:
 
 `
 pip install -r requirements.txt
+
+`
+
+### Install Linux Tools
+
+`
+sudo apt-get install squashfs-tools
+
 `
 
 ### Disable keyring if necesairly

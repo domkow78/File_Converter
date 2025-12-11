@@ -3,6 +3,10 @@ from datetime import datetime
 import psutil
 import sys
 import streamlit as st
+import zipfile
+import shutil
+import subprocess
+import platform
 
 def get_pendrive_path():
     """
@@ -80,12 +84,91 @@ def check_required_files(source_dir):
 
     return zip_file_name, bsh_file_name
 
-def modify_file(source_file, target_file):
+def modify_file(zip_file_name, bsh_file_name):
+    if platform.system() == "Windows":
+        raise RuntimeError("This function is not supported on Windows. Please use a Linux system.")
+    
     """
-    Tymczasowo pusta funkcja. Instrukcje zostaną dodane później.
+    Modyfikuje pliki w katalogu Source i zapisuje wynik w katalogu Target.
+    - Rozpakowuje plik .zip.
+    - Modyfikuje obraz systemu plików SquashFS.
+    - Podmienia plik bsh-lc_domain.
+    - Zmienia uprawnienia pliku bsh-lc_domain na read, write, execute.
+    - Pakuje zmodyfikowane pliki do nowego archiwum .zip w katalogu Target.
     """
-    print(f"Modify file called with: {source_file}, {target_file}")
-    pass
+    try:
+        # Ścieżki do katalogów Source i Target
+        source_dir = os.path.dirname(zip_file_name)
+        target_dir = os.path.join(os.path.dirname(source_dir), "Target")
+        os.makedirs(target_dir, exist_ok=True)
+
+        # Rozpakowanie pliku .zip
+        temp_extract_dir = os.path.join(source_dir, "temp_extracted")
+        os.makedirs(temp_extract_dir, exist_ok=True)
+        with zipfile.ZipFile(zip_file_name, 'r') as zip_ref:
+            zip_ref.extractall(temp_extract_dir)
+            print(f"ZIP file extracted to: {temp_extract_dir}")
+
+        # Znalezienie pliku SquashFS i plików JSON
+        squashfs_file = None
+        for file in os.listdir(temp_extract_dir):
+            if file.endswith(".squashfs"):
+                squashfs_file = os.path.join(temp_extract_dir, file)
+                break
+
+        if not squashfs_file:
+            raise FileNotFoundError("No SquashFS file found in the extracted ZIP.")
+
+        # Rozpakowanie obrazu SquashFS
+        squashfs_extract_dir = os.path.join(temp_extract_dir, "squashfs_extracted")
+        os.makedirs(squashfs_extract_dir, exist_ok=True)
+        subprocess.run(["unsquashfs", "-f", "-d", squashfs_extract_dir, squashfs_file], check=True)
+        print(f"SquashFS file extracted to: {squashfs_extract_dir}")
+
+        # Podmiana pliku bsh-lc_domain w katalogu usr/bin
+        usr_bin_dir = os.path.join(squashfs_extract_dir, "usr", "bin")
+        if not os.path.exists(usr_bin_dir):
+            raise FileNotFoundError(f"Directory usr/bin not found in SquashFS image: {usr_bin_dir}")
+
+        bsh_target_path = os.path.join(usr_bin_dir, "bsh-lc_domain")
+        bsh_source_path = os.path.join(source_dir, bsh_file_name)
+        shutil.copy(bsh_source_path, bsh_target_path)
+        print(f"Replaced {bsh_target_path} with {bsh_source_path}")
+
+        # Zmiana uprawnień pliku bsh-lc_domain na read, write, execute
+        os.chmod(bsh_target_path, 0o755)
+        print(f"Permissions for {bsh_target_path} set to read, write, execute.")
+
+        # Spakowanie zmodyfikowanego obrazu SquashFS
+        modified_squashfs_file = os.path.join(temp_extract_dir, "modified.squashfs")
+        subprocess.run(["mksquashfs", squashfs_extract_dir, modified_squashfs_file], check=True)
+        print(f"Modified SquashFS file created at: {modified_squashfs_file}")
+
+        # Podmiana pliku SquashFS w katalogu tymczasowym
+        shutil.copy(modified_squashfs_file, squashfs_file)
+
+        # Spakowanie zmodyfikowanych plików do nowego ZIP
+        modified_zip_file = os.path.join(target_dir, f"modified_{os.path.basename(zip_file_name)}")
+        with zipfile.ZipFile(modified_zip_file, 'w') as zip_ref:
+            for root, _, files in os.walk(temp_extract_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, temp_extract_dir)
+                    zip_ref.write(file_path, arcname)
+        print(f"Modified ZIP file created at: {modified_zip_file}")
+
+        # Usunięcie katalogu tymczasowego
+        shutil.rmtree(temp_extract_dir)
+        print(f"Temporary directory {temp_extract_dir} removed.")
+
+        print("File modification completed successfully.")
+
+    except FileNotFoundError as e:
+        print(f"File not found: {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error during SquashFS processing: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     try:
